@@ -1,13 +1,22 @@
 #!/usr/bin/env python
 
 from pyscf import df
-from pyscf.pbc import gto as pbcgto, scf as pbcscf, dft as pbcdft
+from pyscf.pbc import gto as pbcgto, dft as pbcdft
 import numpy as np
 import pytest
-from rttddft.pbc.rttdbase import KRTTDSCF, kick_afield, gaussian_afield
+from rttddft.pbc.rttdbase import KRTTDSCF, kick_afield
+from rttddft import rttdbase as rtb
+from rttddft.propagators import magnus4 as m4
 
-@pytest.mark.parametrize("prop_method", ['magnus2', 'mmut'])
-def test_rttddft_diamond(prop_method):
+
+_KICK_FRAC = {
+    'mmut': 0.0,
+    'magnus2': 0.5,
+    'magnus4': 0.5 - np.sqrt(3) / 6,
+}
+
+
+def _diamond_mf():
     cell = pbcgto.Cell()
     cell.atom = 'C 0 0 0; C 0.8925000000 0.8925000000 0.8925000000'
     cell.a = '''
@@ -23,40 +32,23 @@ def test_rttddft_diamond(prop_method):
     kmesh = [2,1,1]
     kpts = cell.make_kpts(kmesh)
     mf = pbcdft.KRKS(cell, kpts=kpts, xc='pbe0').rs_density_fit(auxbasis=df.autoaux(cell)).run()
-
-    step = 1.0
-    afield = kick_afield(0.0, 0.0001, dir=(1.0,0.0,0.0))
-    myrtd = KRTTDSCF(mf, prop_method=prop_method)
-
-    myrtd.kernel(2.0, step, afield=afield)
+    return mf, kpts
 
 
-
-@pytest.mark.parametrize("prop_method", ['magnus2', 'mmut'])
+@pytest.mark.parametrize("prop_method", ['magnus2', 'mmut', 'magnus4'])
 def test_rttddft_diamond_ao_mo(prop_method):
-    cell = pbcgto.Cell()
-    cell.atom = 'C 0 0 0; C 0.8925000000 0.8925000000 0.8925000000'
-    cell.a = '''
-    1.7850000000 1.7850000000 0.0000000000
-    0.0000000000 1.7850000000 1.7850000000
-    1.7850000000 0.0000000000 1.7850000000
-    '''
-    cell.pseudo = 'gth-hf-rev'
-    cell.basis = {'C': [[0, (0.8, 1.0)],
-                        [1, (1.0, 1.0)]]}
-    cell.precision = 1e-10
-    cell.build()
-    kmesh = [2,1,1]
-    kpts = cell.make_kpts(kmesh)
-    mf = pbcdft.KRKS(cell, kpts=kpts, xc='pbe0').rs_density_fit(auxbasis=df.autoaux(cell)).run()
+    mf, kpts = _diamond_mf()
 
     step = 1.0
-    afield = kick_afield(0.0, 0.0001, dir=(1.0,0.0,0.0))
+    afield = kick_afield(_KICK_FRAC[prop_method] * step, 0.0001, dir=(1.0,0.0,0.0))
     myrtd_ao = KRTTDSCF(mf, prop_method=prop_method)
     myrtd_ao.kernel(2.0, step, afield=afield, mo_basis=False)
 
     myrtd_mo = KRTTDSCF(mf, prop_method=prop_method)
     myrtd_mo.kernel(2.0, step, afield=afield, mo_basis=True)
+
+    assert len(myrtd_ao.trace['t']) > 0
+    assert len(myrtd_mo.trace['t']) == len(myrtd_ao.trace['t'])
 
     C = mf.mo_coeff
     for t1, dip1, t2, dip2 in zip(myrtd_mo.trace['t'], myrtd_mo.trace['dipole'],

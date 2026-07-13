@@ -3,7 +3,7 @@ import numpy as np
 import scipy.linalg as sla
 from rttddft.propagators.propstate import PropagatorState
 
-def step_magnus2(state, h1e, v_ext, S, get_veff, dt, conv_tol=1e-5, mo_basis=False, bc=None, logger=None, callback=None):
+def step_magnus2(state, h1e, v_ext, S, get_veff, dt, conv_tol=1e-5, mo_basis=False, bc=None, logger=None, callback=None, **kwargs):
     """Perform a single predictor/corrector time step using the Magnus expansion.
 
     Parameters
@@ -116,5 +116,3 @@ def step_magnus2(state, h1e, v_ext, S, get_veff, dt, conv_tol=1e-5, mo_basis=Fal
     if callback:
         callback(new_state)
     return new_state
-
-

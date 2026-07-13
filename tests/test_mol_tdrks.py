@@ -1,8 +1,18 @@
 from pyscf import gto, dft
-from rttddft.rttdbase import RTTDSCF, gpulse_efield, kick_field
+import numpy as np
+import pytest
+from rttddft.rttdbase import RTTDSCF, kick_field
 
 
-def test_rttddft_water():
+_KICK_FRAC = {
+    'mmut': 0.0,
+    'magnus2': 0.5,
+    'magnus4': 0.5 - np.sqrt(3) / 6,
+}
+
+
+@pytest.mark.parametrize("prop_method", ['magnus2', 'mmut', 'magnus4'])
+def test_rttddft_water(prop_method):
 
     mol = gto.Mole()
     mol.build(
@@ -22,7 +32,9 @@ def test_rttddft_water():
 
 
     step = 0.4
-    efield = kick_field(step/2, 0.0001, dir=(0,0,1.0))
-    myrtd = RTTDSCF(mf)
+    efield = kick_field(_KICK_FRAC[prop_method] * step, 0.0001, dir=(0,0,1.0))
+    myrtd = RTTDSCF(mf, prop_method=prop_method)
 
     myrtd.kernel(4.0, step, efield=efield)
+    assert len(myrtd.trace['t']) > 0
+    assert len(myrtd.trace['dipole']) == len(myrtd.trace['t'])

@@ -217,15 +217,15 @@ class KRTTDSCF(rttdbase.RTTDSCF):
         S = self._scf.get_ovlp()
         get_veff = self._scf.get_veff
 
-
-
         if mo_basis:
             v_ext = make_vext_velgauge(self.cell, afield, self._scf.kpts, self.h1e_ipovlp, bc=bc, vgppnl_helper=self.vgppnl_helper)
             fock_init = bc.rotate_focklike(h1e + get_veff(dm=dm))
             dm = bc.rotate_denslike(dm)
+            hkin_prop = bc.rotate_focklike(self.h1e_kin)
         else:
             v_ext = make_vext_velgauge(self.cell, afield, self._scf.kpts, self.h1e_ipovlp, vgppnl_helper=self.vgppnl_helper)
             fock_init = h1e + get_veff(dm=dm)
+            hkin_prop = self.h1e_kin
 
         prop_state = PropagatorState(
                     dm = dm,
@@ -248,5 +248,6 @@ class KRTTDSCF(rttdbase.RTTDSCF):
                 mo_basis = mo_basis,
                 bc = bc,
                 logger = log,
-                callback = stepcallback
+                callback = stepcallback,
+                hkin = hkin_prop
             )

@@ -1,6 +1,5 @@
 import math
 import numpy as np
-import scipy.linalg
 from pyscf import lib
 from pyscf import gto
 from pyscf import scf
@@ -14,10 +13,10 @@ from pyscf.data import nist
 import h5py
 
 from rttddft.propagators.propstate import PropagatorState
-from rttddft.propagators import magnus2, mmut
+from rttddft.propagators import magnus2, mmut, magnus4
 from rttddft.lib import BasisChanger
 
-RTSCF_PROP_METHODS = {'magnus2': magnus2.step_magnus2, 'mmut': mmut.step_mmut}
+RTSCF_PROP_METHODS = {'magnus2': magnus2.step_magnus2, 'mmut': mmut.step_mmut, 'magnus4': magnus4.step_magnus4}
 
 def gpulse_efield(t0, peak, sigma, dir=(0,0,1.0), freq=0.0, phaseshift=0.0):
     """
@@ -99,7 +98,7 @@ def make_vext_from_efield(efield, mo_dip):
     if efield is not None:
         v_ext = lambda t: -np.einsum('xij,x->ij', mo_dip, efield(t))
     else: 
-        v_ext = lambda t: 0.0
+        v_ext = lambda t: np.zeros_like(mo_dip[0])
     return v_ext
 
 class RTTDSCF(lib.StreamObject):
@@ -180,7 +179,8 @@ class RTTDSCF(lib.StreamObject):
                 raise ValueError(f'prop_method {self.prop_method} not recognized')
 
         dm = self._scf.make_rdm1()
-        h1e = self.mol.intor('int1e_kin') + self.mol.intor('int1e_nuc')
+        hkin = self.mol.intor('int1e_kin')
+        h1e = hkin + self.mol.intor('int1e_nuc')
         get_veff = self._scf.get_veff
 
 
@@ -188,10 +188,11 @@ class RTTDSCF(lib.StreamObject):
             v_ext = make_vext_from_efield(efield, mo_dip)
             fock_init = bc.rotate_focklike(h1e + get_veff(dm=dm))
             dm = bc.rotate_denslike(dm)
+            hkin_prop = bc.rotate_focklike(hkin)
         else:
             v_ext = make_vext_from_efield(efield, ao_dip)
             fock_init = h1e + get_veff(dm=dm)
-
+            hkin_prop = hkin
 
         prop_state = PropagatorState(
                     dm = dm,
@@ -214,5 +215,6 @@ class RTTDSCF(lib.StreamObject):
                 mo_basis = mo_basis,
                 bc = bc,
                 logger = log,
-                callback = stepcallback
+                callback = stepcallback,
+                hkin = hkin_prop
             )
