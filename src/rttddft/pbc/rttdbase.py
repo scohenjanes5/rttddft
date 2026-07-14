@@ -216,16 +216,24 @@ class KRTTDSCF(rttdbase.RTTDSCF):
         h1e = self.h1e_nuc_local + self.h1e_kin
         S = self._scf.get_ovlp()
         get_veff = self._scf.get_veff
+        kpts = self._scf.kpts
+        if self.cell.pseudo:
+            v_ext_nl_ao = get_gth_pp_nl_velgauge(
+                self.cell, np.zeros(3), kpts=kpts, vgppnl_helper=self.vgppnl_helper)
+        else:
+            v_ext_nl_ao = None
 
         if mo_basis:
-            v_ext = make_vext_velgauge(self.cell, afield, self._scf.kpts, self.h1e_ipovlp, bc=bc, vgppnl_helper=self.vgppnl_helper)
+            v_ext = make_vext_velgauge(self.cell, afield, kpts, self.h1e_ipovlp, bc=bc, vgppnl_helper=self.vgppnl_helper)
             fock_init = bc.rotate_focklike(h1e + get_veff(dm=dm))
             dm = bc.rotate_denslike(dm)
             hkin_prop = bc.rotate_focklike(self.h1e_kin)
+            v_ext_nl = None if v_ext_nl_ao is None else bc.rotate_focklike(v_ext_nl_ao)
         else:
-            v_ext = make_vext_velgauge(self.cell, afield, self._scf.kpts, self.h1e_ipovlp, vgppnl_helper=self.vgppnl_helper)
+            v_ext = make_vext_velgauge(self.cell, afield, kpts, self.h1e_ipovlp, vgppnl_helper=self.vgppnl_helper)
             fock_init = h1e + get_veff(dm=dm)
             hkin_prop = self.h1e_kin
+            v_ext_nl = v_ext_nl_ao
 
         prop_state = PropagatorState(
                     dm = dm,
@@ -249,5 +257,6 @@ class KRTTDSCF(rttdbase.RTTDSCF):
                 bc = bc,
                 logger = log,
                 callback = stepcallback,
-                hkin = hkin_prop
+                hkin = hkin_prop,
+                v_ext_nl = v_ext_nl,
             )
