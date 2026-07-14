@@ -7,7 +7,7 @@ from pyscf.pbc.gto import pseudo
 
 from pyscf.pbc.df import gdf_builder, aft, rsdf_builder
 from pyscf.pbc.df import rsdf
-from pyscf.pbc.gto.pseudo.ppnl_velgauge import VelGaugePPNLHelper, get_pp_nl_velgauge, get_pp_nl_velgauge_commutator
+from pyscf.pbc.gto.pseudo.ppnl_velgauge import VelGaugePPNLHelper, get_gth_pp_nl_velgauge, get_gth_pp_nl_velgauge_commutator
 from pyscf import __config__
 
 
@@ -99,7 +99,7 @@ def make_vext_velgauge(cell, afield, kpts, h1e_ipovlp, bc=None, vgppnl_helper=No
         qA_dot_p = np.einsum('i,kixy->kxy', qA, h1e_ipovlp) * (1.0j)
         qA_sqr = np.dot(qA, qA)
         if cell.pseudo:
-            pp_nl, _ = get_pp_nl_velgauge(cell, A_over_c=qA*0, kpts=kpts, vgppnl_helper=vgppnl_helper)
+            pp_nl = get_gth_pp_nl_velgauge(cell, qA*0, kpts=kpts, vgppnl_helper=vgppnl_helper)
         else:
             pp_nl = 0.0
         nao = cell.nao_nr()
@@ -113,7 +113,7 @@ def make_vext_velgauge(cell, afield, kpts, h1e_ipovlp, bc=None, vgppnl_helper=No
 def get_electronic_velocity(cell, A, kpts, h1e_ipovlp, bc=None, dm=None, vgppnl_helper=None):
     qA = -1.0 * A
     if cell.pseudo:
-        r_vnl_commutator, _ = get_pp_nl_velgauge_commutator(cell, A_over_c=qA, kpts=kpts, vgppnl_helper=vgppnl_helper)
+        r_vnl_commutator = get_gth_pp_nl_velgauge_commutator(cell, qA, kpts=kpts, vgppnl_helper=vgppnl_helper)
     velocity = np.zeros(3, dtype=np.complex128)
     for k in range(len(kpts)):
         velocity += np.einsum('ixy,xy->i', h1e_ipovlp[k], dm[k]) * (1.0j)
