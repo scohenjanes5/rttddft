@@ -13,6 +13,7 @@ from pyscf import __config__
 
 import math
 import scipy
+import scipy.linalg as sla
 
 from pyscf.data import nist
 
@@ -215,6 +216,7 @@ class KRTTDSCF(rttdbase.RTTDSCF):
         dm = self._scf.make_rdm1()
         h1e = self.h1e_nuc_local + self.h1e_kin
         S = self._scf.get_ovlp()
+        Sinv = sla.inv(S)
         get_veff = self._scf.get_veff
         kpts = self._scf.kpts
         if self.cell.pseudo:
@@ -259,4 +261,5 @@ class KRTTDSCF(rttdbase.RTTDSCF):
                 callback = stepcallback,
                 hkin = hkin_prop,
                 v_ext_nl = v_ext_nl,
+                Sinv = Sinv,
             )

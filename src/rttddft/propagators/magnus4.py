@@ -42,8 +42,8 @@ def step_magnus4(state, h1e, v_ext, S, get_veff, dt, conv_tol=1e-5, mo_basis=Fal
     PropagatorState
         New system state after the time step.
     """
-    hkin = kwargs.get('hkin')
-    assert hkin is not None, "Kinetic integrals 'hkin' must be provided for 4th order Magnus"
+    hkin = kwargs['hkin']
+    Sinv = kwargs['Sinv']
 
     converged = False
     nbuilds = 0
@@ -56,12 +56,10 @@ def step_magnus4(state, h1e, v_ext, S, get_veff, dt, conv_tol=1e-5, mo_basis=Fal
 
     if dm.ndim > 2:
         nkpts = dm.shape[0]
-        is_kpoint = True
+        is_kpoint = True            
     else:
         nkpts = 0
         is_kpoint = False
-        if not mo_basis:
-            Sinv = sla.inv(S)
 
     frac1 = 0.5 - np.sqrt(3)/6
     frac2 = 0.5 + np.sqrt(3)/6
@@ -102,8 +100,7 @@ def step_magnus4(state, h1e, v_ext, S, get_veff, dt, conv_tol=1e-5, mo_basis=Fal
                     evs, evecs = sla.eigh(H4_k)
                     expH4_k = evecs @ (np.exp(-1.0j * dt * evs)[:, None] * evecs.conj().T)
                 else:
-                    Sinv = sla.inv(S[k])
-                    commutator = T_left[k] @ Sinv @ dV[k] - dV[k] @ Sinv @ T_left[k]
+                    commutator = T_left[k] @ Sinv[k] @ dV[k] - dV[k] @ Sinv[k] @ T_left[k]
                     H4_k = H_avg[k] + 1j * commutator
                     evs, C2 = sla.eigh(H4_k, b=S[k])
                     C2inv = sla.inv(C2)

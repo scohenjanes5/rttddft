@@ -11,7 +11,7 @@ from pyscf.scf import _response_functions
 from pyscf.data import nist
 
 import h5py
-
+import scipy.linalg as sla
 from rttddft.propagators.propstate import PropagatorState
 from rttddft.propagators import magnus2, mmut, magnus4
 from rttddft.lib import BasisChanger
@@ -130,6 +130,7 @@ class RTTDSCF(lib.StreamObject):
             ao_dip = self.mol.intor_symmetric('int1e_r', comp=3)
 
         S = self._scf.get_ovlp()
+        Sinv = sla.inv(S)
         mo_dip = bc.rotate_focklike(ao_dip)
         charges = self.mol.atom_charges()
         coords  = self.mol.atom_coords()
@@ -216,5 +217,6 @@ class RTTDSCF(lib.StreamObject):
                 bc = bc,
                 logger = log,
                 callback = stepcallback,
-                hkin = hkin_prop
+                hkin = hkin_prop,
+                Sinv = Sinv
             )
