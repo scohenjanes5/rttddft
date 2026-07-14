@@ -18,7 +18,7 @@ import scipy.linalg as sla
 from pyscf.data import nist
 
 from rttddft import rttdbase
-from rttddft.rttdbase import make_vext_from_efield, get_mo_dip
+from rttddft.rttdbase import make_vext_from_efield, get_mo_dip, maybe_apply_delta_kick
 from rttddft.propagators.propstate import PropagatorState
 from rttddft.propagators import magnus2, mmut
 from rttddft.lib import BasisChanger, KBasisChanger
@@ -227,15 +227,19 @@ class KRTTDSCF(rttdbase.RTTDSCF):
 
         if mo_basis:
             v_ext = make_vext_velgauge(self.cell, afield, kpts, self.h1e_ipovlp, bc=bc, vgppnl_helper=self.vgppnl_helper)
-            fock_init = bc.rotate_focklike(h1e + get_veff(dm=dm))
             dm = bc.rotate_denslike(dm)
             hkin_prop = bc.rotate_focklike(self.h1e_kin)
             v_ext_nl = None if v_ext_nl_ao is None else bc.rotate_focklike(v_ext_nl_ao)
+            dm, v_ext = maybe_apply_delta_kick(
+                dm, v_ext, t_start, dt, mo_basis=True, logger=log, v_ext_nl=v_ext_nl)
+            fock_init = bc.rotate_focklike(h1e + get_veff(dm=bc.rev_denslike(dm)))
         else:
             v_ext = make_vext_velgauge(self.cell, afield, kpts, self.h1e_ipovlp, vgppnl_helper=self.vgppnl_helper)
-            fock_init = h1e + get_veff(dm=dm)
             hkin_prop = self.h1e_kin
             v_ext_nl = v_ext_nl_ao
+            dm, v_ext = maybe_apply_delta_kick(
+                dm, v_ext, t_start, dt, S=S, mo_basis=False, logger=log, v_ext_nl=v_ext_nl)
+            fock_init = h1e + get_veff(dm=dm)
 
         prop_state = PropagatorState(
                     dm = dm,

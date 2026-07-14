@@ -18,6 +18,62 @@ from rttddft.lib import BasisChanger
 
 RTSCF_PROP_METHODS = {'magnus2': magnus2.step_magnus2, 'mmut': mmut.step_mmut, 'magnus4': magnus4.step_magnus4}
 
+def apply_delta_kick_dm(dm, V, dt, S=None, mo_basis=True):
+    """Apply a discrete delta kick: ρ → U ρ U† with U = exp(-i dt V).
+
+    ``kick_field`` returns a peak field value sampled as a Hamiltonian term for
+    one timestep (as in MMUT's ``exp(-i dt (F+V))``), so the analytic boost uses
+    ``dt V`` rather than ``V`` alone.
+    """
+    def _kick_one(dm1, V1, S1):
+        if mo_basis:
+            U = sla.expm(-1.0j * dt * V1)
+        else:
+            assert S1 is not None, "Overlap S is required for AO delta kick"
+            evs, C = sla.eigh(V1, b=S1)
+            U = C @ (np.exp(-1.0j * dt * evs)[:, None] * (C.conj().T @ S1))
+        return U @ dm1 @ U.conj().T
+
+    if dm.ndim > 2:
+        out = np.empty_like(dm, dtype=complex)
+        for k in range(dm.shape[0]):
+            Sk = None if S is None else S[k]
+            out[k] = _kick_one(dm[k], V[k], Sk)
+        return out
+    return _kick_one(dm, V, S)
+
+
+def maybe_apply_delta_kick(dm, v_ext, t_start, dt, S=None, mo_basis=True, logger=None,
+                           v_ext_nl=None):
+    """If ``v_ext(t_start) ≠ 0``, apply an instantaneous kick and consume that spike.
+
+    Handles a delta at ``t_start`` alone or together with a later continuous drive:
+    the density is kicked with ``U = exp(-i dt V(t_start))``, then ``v_ext`` is wrapped
+    so that sample is not applied again during propagation.
+
+    ``v_ext_nl``, when given, is treated as a static nonlocal contribution (e.g. GTH
+    PP) and is excluded from the kick so it is not mistaken for an impulse.
+
+    Returns
+    -------
+    dm, v_ext
+    """
+    V0 = v_ext(t_start)
+    V_kick = V0 if v_ext_nl is None else V0 - v_ext_nl
+    if np.linalg.norm(V_kick) == 0.0:
+        return dm, v_ext
+    if logger is not None:
+        logger.info('Applying instantaneous delta kick at t=%g', t_start)
+    dm = apply_delta_kick_dm(dm, V_kick, dt, S=S, mo_basis=mo_basis)
+
+    def v_ext_consumed(t):
+        Vt = v_ext(t)
+        if np.isclose(t, t_start):
+            return Vt - V_kick
+        return Vt
+    return dm, v_ext_consumed
+
+
 def gpulse_efield(t0, peak, sigma, dir=(0,0,1.0), freq=0.0, phaseshift=0.0):
     """
     Gaussian pulse electric field
@@ -119,10 +175,6 @@ class RTTDSCF(lib.StreamObject):
 
     
     def kernel(self, t_end, dt, t_start=0.0, efield=None, mo_basis=True):
-
-        # if not mo_basis:
-        #     raise NotImplementedError("Real-time TDDFT in AO basis not implemented yet.")
-
         bc = BasisChanger(self._scf.get_ovlp(), self._scf.mo_coeff)
         log = logger.new_logger(self, self.verbose)
 
@@ -136,12 +188,11 @@ class RTTDSCF(lib.StreamObject):
         coords  = self.mol.atom_coords()
         nucl_dip = np.einsum('i,ix->x', charges, coords)
 
-        
         self.trace = {'t': [], 'dipole': [], 'dm': []}
 
         if t_end <= t_start:
             raise ValueError('t_end must be greater than t_start')
-        
+
         nsteps = math.ceil((t_end - t_start) / dt)
 
         chkf = h5py.File(self.chkfile, "w") if self.chkfile is not None else None
@@ -171,8 +222,6 @@ class RTTDSCF(lib.StreamObject):
                 chkf['dipole'][-1] = np.asarray(dipole, dtype=np.complex128)
                 chkf['dm'][-1] = np.asarray(dm, dtype=np.complex128)
 
-        
-
         if self.prop is None:
             if self.prop_method in RTSCF_PROP_METHODS:
                 self.prop = RTSCF_PROP_METHODS[self.prop_method]
@@ -184,16 +233,17 @@ class RTTDSCF(lib.StreamObject):
         h1e = hkin + self.mol.intor('int1e_nuc')
         get_veff = self._scf.get_veff
 
-
         if mo_basis:
             v_ext = make_vext_from_efield(efield, mo_dip)
-            fock_init = bc.rotate_focklike(h1e + get_veff(dm=dm))
             dm = bc.rotate_denslike(dm)
             hkin_prop = bc.rotate_focklike(hkin)
+            dm, v_ext = maybe_apply_delta_kick(dm, v_ext, t_start, dt, mo_basis=True, logger=log)
+            fock_init = bc.rotate_focklike(h1e + get_veff(dm=bc.rev_denslike(dm)))
         else:
             v_ext = make_vext_from_efield(efield, ao_dip)
-            fock_init = h1e + get_veff(dm=dm)
             hkin_prop = hkin
+            dm, v_ext = maybe_apply_delta_kick(dm, v_ext, t_start, dt, S=S, mo_basis=False, logger=log)
+            fock_init = h1e + get_veff(dm=dm)
 
         prop_state = PropagatorState(
                     dm = dm,

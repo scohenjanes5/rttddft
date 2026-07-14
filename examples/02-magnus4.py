@@ -24,11 +24,7 @@ from rttddft.rttdbase import RTTDSCF, gpulse_efield, kick_field
 #efield = gpulse_efield(3, 0.001, 1, dir=(0,0,1.0), freq=0.0, phaseshift=0.0)
 
 step = 0.4
-# Place the kick on the first Gauss quadrature point so Magnus4 can sample it:
-# t1 = (1/2 - √3/6) Δt
-# NOTE: The intensity will be half of what other propagators would register due
-# to the averaging over both t1 (has the kick) and t2 (no kick)
-efield = kick_field((0.5 - np.sqrt(3)/6) * step, 0.0001, dir=(0,0,1.0))
+efield = kick_field(0.0, 0.0001, dir=(0,0,1.0))
 myrtd = RTTDSCF(mf, chkfile='rtd.chk', prop_method='magnus4')
 
 myrtd.kernel(100.0, step, efield=efield)

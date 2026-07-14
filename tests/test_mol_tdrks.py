@@ -4,13 +4,6 @@ import pytest
 from rttddft.rttdbase import RTTDSCF, kick_field
 
 
-_KICK_FRAC = {
-    'mmut': 0.0,
-    'magnus2': 0.5,
-    'magnus4': 0.5 - np.sqrt(3) / 6,
-}
-
-
 @pytest.mark.parametrize("prop_method", ['magnus2', 'mmut', 'magnus4'])
 def test_rttddft_water_ao_mo(prop_method):
 
@@ -31,7 +24,7 @@ def test_rttddft_water_ao_mo(prop_method):
     mf.kernel()
 
     step = 0.4
-    efield = kick_field(_KICK_FRAC[prop_method] * step, 0.0001, dir=(0,0,1.0))
+    efield = kick_field(0.0, 0.0001, dir=(0,0,1.0))
 
     myrtd_ao = RTTDSCF(mf, prop_method=prop_method)
     myrtd_ao.kernel(4.0, step, efield=efield, mo_basis=False)

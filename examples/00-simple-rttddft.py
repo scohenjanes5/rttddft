@@ -24,7 +24,7 @@ from rttddft.rttdbase import RTTDSCF, gpulse_efield, kick_field
 #efield = gpulse_efield(3, 0.001, 1, dir=(0,0,1.0), freq=0.0, phaseshift=0.0)
 
 step = 0.4
-efield = kick_field(step/2, 0.0001, dir=(0,0,1.0))
+efield = kick_field(0.0, 0.0001, dir=(0,0,1.0))
 myrtd = RTTDSCF(mf, chkfile='rtd.chk')
 
 myrtd.kernel(100.0, step, efield=efield)

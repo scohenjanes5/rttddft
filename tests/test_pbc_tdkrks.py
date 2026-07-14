@@ -10,13 +10,6 @@ from rttddft import rttdbase as rtb
 from rttddft.propagators import magnus4 as m4
 
 
-_KICK_FRAC = {
-    'mmut': 0.0,
-    'magnus2': 0.5,
-    'magnus4': 0.5 - np.sqrt(3) / 6,
-}
-
-
 def _diamond_mf():
     cell = pbcgto.Cell()
     cell.atom = 'C 0 0 0; C 0.8925000000 0.8925000000 0.8925000000'
@@ -41,7 +34,7 @@ def test_rttddft_diamond_ao_mo(prop_method):
     mf, kpts = _diamond_mf()
 
     step = 1.0
-    afield = kick_afield(_KICK_FRAC[prop_method] * step, 0.0001, dir=(1.0,0.0,0.0))
+    afield = kick_afield(0.0, 0.0001, dir=(1.0,0.0,0.0))
     myrtd_ao = KRTTDSCF(mf, prop_method=prop_method)
     myrtd_ao.kernel(2.0, step, afield=afield, mo_basis=False)
 
@@ -69,7 +62,7 @@ def test_magnus4_commutator_includes_pp_nl(mo_basis):
     """Nonlocal GTH PP must enter the Magnus4 commutator via v_ext_nl."""
     mf, kpts = _diamond_mf()
     step = 1.0
-    afield = kick_afield(_KICK_FRAC['magnus4'] * step, 0.0001, dir=(1.0,0.0,0.0))
+    afield = kick_afield(0.0, 0.0001, dir=(1.0,0.0,0.0))
 
     seen = {'v_ext_nl': None}
 
