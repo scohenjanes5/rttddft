@@ -9,6 +9,7 @@ from pyscf.lib import logger
 from pyscf.scf import hf_symm
 from pyscf.scf import _response_functions
 from pyscf.data import nist
+from pyscf.tdscf.rhf import _charge_center
 
 import h5py
 import scipy.linalg as sla
@@ -145,7 +146,9 @@ def intensity_to_e0_au(intensity):
 def make_bc(mf):
     return BasisChanger(mf.get_ovlp(), mf.mo_coeff)
 
-def get_mo_dip(bc, mol, origin=(0., 0., 0.)):
+def get_mo_dip(bc, mol, origin=None):
+    if origin is None:
+        origin = _charge_center(mol)
     with mol.with_common_origin(origin):
         ao_dip = mol.intor_symmetric('int1e_r', comp=3)
     return bc.rotate_focklike(ao_dip)
@@ -178,7 +181,7 @@ class RTTDSCF(lib.StreamObject):
         bc = BasisChanger(self._scf.get_ovlp(), self._scf.mo_coeff)
         log = logger.new_logger(self, self.verbose)
 
-        with self.mol.with_common_origin((0.0, 0.0, 0.0)):
+        with self.mol.with_common_origin(_charge_center(self.mol)):
             ao_dip = self.mol.intor_symmetric('int1e_r', comp=3)
 
         S = self._scf.get_ovlp()
