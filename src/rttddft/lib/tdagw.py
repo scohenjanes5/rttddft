@@ -1,10 +1,8 @@
 import math
 import numpy as np
-import numexpr as ne
 import scipy.linalg as sla
 import scipy
 import h5py
-from fcdmft.utils import arraymath
 from rttddft.rttdbase import RTTDSCF, get_mo_dip, make_bc, make_vext_from_efield, RTSCF_PROP_METHODS
 
 from rttddft.propagators import magnus2
@@ -190,9 +188,8 @@ class TDAGW(RTTDSCF):
 
 
 if __name__ == '__main__':
-    from pyscf import gto, dft, scf
+    from pyscf import gto, dft
     from fcdmft.gw.mol.gw_cd import GWCD
-    from fcdmft.gw.mol.gw_ac import GWAC
 
 
     mol = gto.Mole()
@@ -220,7 +217,7 @@ if __name__ == '__main__':
 
     step = 0.4
     estrength = 0.00001
-    from rttddft.rttdbase import gpulse_efield, kick_field
+    from rttddft.rttdbase import kick_field
     efield = kick_field(0, estrength, dir=(0,0,1.0))
 
 

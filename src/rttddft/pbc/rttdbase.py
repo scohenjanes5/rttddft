@@ -1,15 +1,12 @@
 import numpy as np
 from pyscf import lib
 from pyscf.lib import logger
-from pyscf.pbc import scf
 from pyscf.pbc import df as pbcdf
 from pyscf.pbc.gto import pseudo
 
 from pyscf.pbc.df import gdf_builder, aft, rsdf_builder
 from pyscf.pbc.df import rsdf
 from pyscf.pbc.gto.pseudo.ppnl_velgauge import VelGaugePPNLHelper, get_gth_pp_nl_velgauge, get_gth_pp_nl_velgauge_commutator
-from pyscf import __config__
-
 
 import math
 import scipy
