@@ -8,3 +8,4 @@ class PropagatorState(typing.NamedTuple):
     fock_prev: np.ndarray
     time: float
     time_prev: float
+    fock_intermediates: typing.Optional[np.ndarray] = None

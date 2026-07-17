@@ -110,7 +110,8 @@ def step_magnus2(state, h1e, v_ext, S, get_veff, dt, conv_tol=1e-5, mo_basis=Fal
         fock=F_p_dt,
         fock_prev=F,
         time=t + dt,
-        time_prev=t
+        time_prev=t,
+        fock_intermediates=np.asarray(F_p_half)[None, ...],
     )
 
     if callback:

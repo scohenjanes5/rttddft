@@ -145,7 +145,8 @@ def step_magnus4(state, h1e, v_ext, S, get_veff, dt, conv_tol=1e-5, mo_basis=Fal
         fock=F_p_dt,
         fock_prev=F_t,
         time=t + dt,
-        time_prev=t
+        time_prev=t,
+        fock_intermediates=np.stack([F_t1, F_t2], axis=0),
     )
 
     if callback:
