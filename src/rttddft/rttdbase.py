@@ -231,6 +231,17 @@ class RTTDSCF(lib.StreamObject):
                 chkf['dipole'][-1] = np.asarray(dipole, dtype=np.complex128)
                 chkf['dm'][-1] = np.asarray(dm, dtype=np.complex128)
                 chkf['fock'][-1] = np.asarray(state.fock, dtype=np.complex128)
+                if state.dm_min_half is not None:
+                    dmh = np.asarray(state.dm_min_half, dtype=np.complex128)
+                    if 'dm_min_half' not in chkf:
+                        chkf.create_dataset(
+                            'dm_min_half', (0, nao, nao),
+                            dtype=np.complex128,
+                            maxshape=(None, nao, nao),
+                            chunks=(1, nao, nao),
+                        )
+                    chkf['dm_min_half'].resize((chkf['dm_min_half'].shape[0] + 1), axis=0)
+                    chkf['dm_min_half'][-1] = dmh
 
         if self.prop is None:
             if self.prop_method in RTSCF_PROP_METHODS:
