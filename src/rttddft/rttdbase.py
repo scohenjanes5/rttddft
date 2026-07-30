@@ -198,14 +198,19 @@ class RTTDSCF(lib.StreamObject):
 
         nsteps = math.ceil((t_end - t_start) / dt)
 
+        nao = self.mol.nao
         chkf = h5py.File(self.chkfile, "w") if self.chkfile is not None else None
         if chkf is not None:
             chkf.create_dataset('t', (0,), maxshape=(None,), dtype=np.float64, chunks=True)
             chkf.create_dataset('dipole', (0, 3), maxshape=(None, 3), dtype=np.complex128, chunks=True)
-            chkf.create_dataset('dm', (0, self.mol.nao, self.mol.nao),
+            chkf.create_dataset('dm', (0, nao, nao),
                                 dtype=np.complex128,
-                                maxshape=(None, self.mol.nao, self.mol.nao),
-                                chunks=(1, self.mol.nao, self.mol.nao))
+                                maxshape=(None, nao, nao),
+                                chunks=(1, nao, nao))
+            chkf.create_dataset('fock', (0, nao, nao),
+                                dtype=np.complex128,
+                                maxshape=(None, nao, nao),
+                                chunks=(1, nao, nao))
 
         def stepcallback(state):
             t = state.time
@@ -221,9 +226,11 @@ class RTTDSCF(lib.StreamObject):
                 chkf['t'].resize((chkf['t'].shape[0] + 1), axis=0)
                 chkf['dipole'].resize((chkf['dipole'].shape[0] + 1), axis=0)
                 chkf['dm'].resize((chkf['dm'].shape[0] + 1), axis=0)
+                chkf['fock'].resize((chkf['fock'].shape[0] + 1), axis=0)
                 chkf['t'][-1] = t
                 chkf['dipole'][-1] = np.asarray(dipole, dtype=np.complex128)
                 chkf['dm'][-1] = np.asarray(dm, dtype=np.complex128)
+                chkf['fock'][-1] = np.asarray(state.fock, dtype=np.complex128)
 
         if self.prop is None:
             if self.prop_method in RTSCF_PROP_METHODS:
